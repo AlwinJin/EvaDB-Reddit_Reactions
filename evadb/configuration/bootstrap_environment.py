@@ -1,0 +1,133 @@
+# coding=utf-8
+# Copyright 2018-2023 EvaDB
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+import logging
+from pathlib import Path
+from typing import Union
+
+from evadb.configuration.constants import (
+    CACHE_DIR,
+    DB_DEFAULT_NAME,
+    FUNCTION_DIR,
+    INDEX_DIR,
+    MODEL_DIR,
+    S3_DOWNLOAD_DIR,
+    TMP_DIR,
+    EvaDB_DATASET_DIR,
+)
+from evadb.evadb_config import BASE_EVADB_CONFIG
+from evadb.utils.logging_manager import logger as evadb_logger
+
+
+def get_default_db_uri(evadb_dir: Path):
+    """
+    Get the default database uri.
+
+    Arguments:
+        evadb_dir: path to evadb database directory
+    """
+    # Default to sqlite.
+    return f"sqlite:///{evadb_dir.resolve()}/{DB_DEFAULT_NAME}"
+
+
+def bootstrap_environment(evadb_dir: Path, evadb_installation_dir: Path):
+    """
+    Populates necessary configuration for EvaDB to be able to run.
+
+    Arguments:
+        evadb_dir: path to evadb database directory
+        evadb_installation_dir: path to evadb package
+    """
+
+    config_obj = BASE_EVADB_CONFIG
+
+    # creates necessary directories
+    config_default_dict = create_directories_and_get_default_config_values(
+        Path(evadb_dir), Path(evadb_installation_dir)
+    )
+
+    assert evadb_dir.exists(), f"{evadb_dir} does not exist"
+    assert evadb_installation_dir.exists(), f"{evadb_installation_dir} does not exist"
+    config_obj = merge_dict_of_dicts(config_default_dict, config_obj)
+    mode = config_obj["mode"]
+
+    # set logger to appropriate level (debug or release)
+    level = logging.WARN if mode == "release" else logging.DEBUG
+    evadb_logger.setLevel(level)
+    evadb_logger.debug(f"Setting logging level to: {str(level)}")
+
+    # Mainly want to add all the configs to sqlite
+
+    return config_obj
+
+
+# TODO : Change
+def create_directories_and_get_default_config_values(
+    evadb_dir: Path, evadb_installation_dir: Path
+) -> Union[dict, str]:
+    default_install_dir = evadb_installation_dir
+    dataset_location = evadb_dir / EvaDB_DATASET_DIR
+    index_dir = evadb_dir / INDEX_DIR
+    cache_dir = evadb_dir / CACHE_DIR
+    s3_dir = evadb_dir / S3_DOWNLOAD_DIR
+    tmp_dir = evadb_dir / TMP_DIR
+    function_dir = evadb_dir / FUNCTION_DIR
+    model_dir = evadb_dir / MODEL_DIR
+
+    if not evadb_dir.exists():
+        evadb_dir.mkdir(parents=True, exist_ok=True)
+    if not dataset_location.exists():
+        dataset_location.mkdir(parents=True, exist_ok=True)
+    if not index_dir.exists():
+        index_dir.mkdir(parents=True, exist_ok=True)
+    if not cache_dir.exists():
+        cache_dir.mkdir(parents=True, exist_ok=True)
+    if not s3_dir.exists():
+        s3_dir.mkdir(parents=True, exist_ok=True)
+    if not tmp_dir.exists():
+        tmp_dir.mkdir(parents=True, exist_ok=True)
+    if not function_dir.exists():
+        function_dir.mkdir(parents=True, exist_ok=True)
+    if not model_dir.exists():
+        model_dir.mkdir(parents=True, exist_ok=True)
+
+    config_obj = {}
+    config_obj["evadb_installation_dir"] = str(default_install_dir.resolve())
+    config_obj["datasets_dir"] = str(dataset_location.resolve())
+    config_obj["catalog_database_uri"] = get_default_db_uri(evadb_dir)
+    config_obj["index_dir"] = str(index_dir.resolve())
+    config_obj["cache_dir"] = str(cache_dir.resolve())
+    config_obj["s3_download_dir"] = str(s3_dir.resolve())
+    config_obj["tmp_dir"] = str(tmp_dir.resolve())
+    config_obj["function_dir"] = str(function_dir.resolve())
+    config_obj["model_dir"] = str(model_dir.resolve())
+    return config_obj
+
+
+def merge_dict_of_dicts(dict1, dict2):
+    """In case of conflict override with dict2"""
+    merged_dict = dict1.copy()
+
+    for key, value in dict2.items():
+        if key in merged_dict.keys():
+            # Overwrite only if some value is specified.
+            if value is not None:
+                if isinstance(merged_dict[key], dict) and isinstance(value, dict):
+                    merged_dict[key] = merge_dict_of_dicts(merged_dict[key], value)
+                else:
+                    merged_dict[key] = value
+        else:
+            merged_dict[key] = value
+
+    return merged_dict
