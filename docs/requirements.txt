@@ -34,7 +34,7 @@ myst-nb
 jupytext==1.15.2
 
 # Pin urllib to avoid downstream issues
-urllib3 < 2
+urllib3 < 3
 
 # eva
 git+https://github.com/georgia-tech-db/eva.git@staging
