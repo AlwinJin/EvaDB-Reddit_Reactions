@@ -13,11 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import evadb
 import pandas as pd
 import praw
-import re
-import sqlalchemy
 
 from evadb.third_party.databases.types import DBHandler, DBHandlerResponse, DBHandlerStatus
 from evadb.third_party.databases.reddit.table_column_info import REDDIT_COLUMNS
@@ -90,13 +87,8 @@ class RedditHandler(DBHandler):
         Args:
             table_name (str): name of the table to get submissions from
         """
-        reddit = praw.Reddit(
-            client_id=self.client_id,
-            client_secret=self.client_secret,
-            user_agent=self.user_agent
-        )
 
-        subreddit = reddit.subreddit(self.subreddit)
+        subreddit = self.connection.subreddit(self.subreddit)
         posts = None
 
         if table_name == 'top':
