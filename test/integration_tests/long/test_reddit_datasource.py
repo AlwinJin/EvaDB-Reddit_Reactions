@@ -41,12 +41,10 @@ class RedditDataSourceTest(unittest.TestCase):
             "subreddit": "gatech",
             "num_results": "10"
         }
-        print("params done")
         query = f"""CREATE DATABASE reddit_data
                     WITH ENGINE = "reddit",
                     PARAMETERS = {params};"""
         execute_query_fetch_all(self.evadb, query)
-        print("query done")
 
         query = "SELECT * FROM reddit_data.top;"
         batch = execute_query_fetch_all(self.evadb, query)
