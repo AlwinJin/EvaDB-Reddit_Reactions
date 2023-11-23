@@ -21,4 +21,4 @@ params = {
 }
 cursor.query("DROP DATABASE IF EXISTS reddit_data").df()
 cursor.query(f"CREATE DATABASE reddit_data WITH ENGINE = 'reddit', PARAMETERS = {params}").df()
-'''
+```
